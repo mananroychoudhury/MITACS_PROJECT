@@ -1,0 +1,239 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
+
+#define MAX_BOOKS 100
+#define MAX_MEMBERS 100
+#define MAX_TRANSACTIONS 100
+#define FILENAME_BOOKS "books.txt"
+#define FILENAME_MEMBERS "members.txt"
+#define FILENAME_TRANSACTIONS "transactions.txt"
+
+struct Book {
+    int id;
+    char title[100];
+    char author[100];
+    char isbn[20];
+    int quantity;
+};
+
+struct Member {
+    int id;
+    char name[100];
+    char email[100];
+};
+
+struct Transaction {
+    int id;
+    int book_id;
+    int member_id;
+    char issue_date[20];
+    char return_date[20];  // Added return_date to Transaction structure
+};
+
+struct Book books[MAX_BOOKS];
+struct Member members[MAX_MEMBERS];
+struct Transaction transactions[MAX_TRANSACTIONS];
+
+int bookCount = 0;
+int memberCount = 0;
+int transactionCount = 0;
+
+// Function to load data from file
+void loadDataFromFile(const char *filename, void *data, size_t size, size_t count) {
+    FILE *file = fopen(filename, "rb");
+    if (file != NULL) {
+        fread(data, size, count, file);
+        fclose(file);
+    }
+}
+
+// Function to save data to file
+void saveDataToFile(const char *filename, const void *data, size_t size, size_t count) {
+    FILE *file = fopen(filename, "wb");
+    if (file != NULL) {
+        fwrite(data, size, count, file);
+        fclose(file);
+    }
+}
+
+// Function to add a new book
+void addBook() {
+    printf("Enter the book title: ");
+    scanf("%s", books[bookCount].title);
+    printf("Enter the author: ");
+    scanf("%s", books[bookCount].author);
+    printf("Enter the ISBN: ");
+    scanf("%s", books[bookCount].isbn);
+    printf("Enter the quantity: ");
+    scanf("%d", &books[bookCount].quantity);
+
+    books[bookCount].id = bookCount + 1;
+    bookCount++;
+}
+
+// Function to display all books
+void displayBooks() {
+    printf("\nBooks:\n");
+    for (int i = 0; i < bookCount; i++) {
+        printf("ID: %d, Title: %s, Author: %s, ISBN: %s, Quantity: %d\n",
+               books[i].id, books[i].title, books[i].author, books[i].isbn, books[i].quantity);
+    }
+}
+
+// Function to add a new member
+void addMember() {
+    printf("Enter the member's name: ");
+    scanf("%s", members[memberCount].name);
+    printf("Enter the member's email: ");
+    scanf("%s", members[memberCount].email);
+
+    members[memberCount].id = memberCount + 1;
+    memberCount++;
+}
+
+// Function to display all members
+void displayMembers() {
+    printf("\nMembers:\n");
+    for (int i = 0; i < memberCount; i++) {
+        printf("ID: %d, Name: %s, Email: %s\n", members[i].id, members[i].name, members[i].email);
+    }
+}
+
+// Function to issue a book
+void issueBook() {
+    int bookId, memberId;
+    printf("Enter the book ID to issue: ");
+    scanf("%d", &bookId);
+    printf("Enter the member ID: ");
+    scanf("%d", &memberId);
+
+    time_t currentTime;
+    time(&currentTime);
+    struct tm* timeInfo = localtime(&currentTime);
+    strftime(transactions[transactionCount].issue_date, 20, "%Y-%m-%d %H:%M:%S", timeInfo);
+    strcpy(transactions[transactionCount].return_date, "Not Returned");
+
+    transactions[transactionCount].id = transactionCount + 1;
+    transactions[transactionCount].book_id = bookId;
+    transactions[transactionCount].member_id = memberId;
+    transactionCount++;
+}
+
+// Function to return a book
+void returnBook() {
+    int transactionId;
+    printf("Enter the transaction ID to return the book: ");
+    scanf("%d", &transactionId);
+
+    time_t currentTime;
+    time(&currentTime);
+    struct tm* timeInfo = localtime(&currentTime);
+    strftime(transactions[transactionId - 1].return_date, 20, "%Y-%m-%d %H:%M:%S", timeInfo);
+}
+
+// Function to display the entire table of information
+void displayAllInformation() {
+    printf("\nAll Information:\n");
+
+    printf("\nBooks:\n");
+    for (int i = 0; i < bookCount; i++) {
+        printf("ID: %d, Title: %s, Author: %s, ISBN: %s, Quantity: %d\n",
+               books[i].id, books[i].title, books[i].author, books[i].isbn, books[i].quantity);
+    }
+
+    printf("\nMembers:\n");
+    for (int i = 0; i < memberCount; i++) {
+        printf("ID: %d, Name: %s, Email: %s\n", members[i].id, members[i].name, members[i].email);
+    }
+
+    printf("\nTransactions:\n");
+    for (int i = 0; i < transactionCount; i++) {
+        printf("ID: %d, Book ID: %d, Member ID: %d, Issue Date: %s, Return Date: %s",
+               transactions[i].id, transactions[i].book_id, transactions[i].member_id,
+               transactions[i].issue_date, transactions[i].return_date);
+
+        // Calculate the difference in days between issue_date and return_date
+        struct tm issueTime = {0};
+        struct tm returnTime = {0};
+        strptime(transactions[i].issue_date, "%Y-%m-%d %H:%M:%S", &issueTime);
+        strptime(transactions[i].return_date, "%Y-%m-%d %H:%M:%S", &returnTime);
+
+        time_t diffSeconds = difftime(mktime(&returnTime), mktime(&issueTime));
+        double diffDays = fabs(diffSeconds) / (24 * 3600);
+
+        // Check for late submission (more than 21 days)
+        if (diffDays > 21.0) {
+            printf(" - Late Submission");
+        }
+
+        printf("\n");
+    }
+}
+
+// Function to save data to files before exiting
+void saveDataBeforeExit() {
+    saveDataToFile(FILENAME_BOOKS, books, sizeof(struct Book), bookCount);
+    saveDataToFile(FILENAME_MEMBERS, members, sizeof(struct Member), memberCount);
+    saveDataToFile(FILENAME_TRANSACTIONS, transactions, sizeof(struct Transaction), transactionCount);
+}
+
+int main() {
+    // Load data from files at the beginning
+    loadDataFromFile(FILENAME_BOOKS, books, sizeof(struct Book), MAX_BOOKS);
+    loadDataFromFile(FILENAME_MEMBERS, members, sizeof(struct Member), MAX_MEMBERS);
+    loadDataFromFile(FILENAME_TRANSACTIONS, transactions, sizeof(struct Transaction), MAX_TRANSACTIONS);
+
+    int choice;
+
+    do {
+        printf("\nLibrary Management System\n");
+        printf("1. Add Book\n");
+        printf("2. Display Books\n");
+        printf("3. Add Member\n");
+        printf("4. Display Members\n");
+        printf("5. Issue Book\n");
+        printf("6. Return Book\n");
+        printf("7. Display All Information\n");
+        printf("0. Exit\n");
+
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                addBook();
+                break;
+            case 2:
+                displayBooks();
+                break;
+            case 3:
+                addMember();
+                break;
+            case 4:
+                displayMembers();
+                break;
+            case 5:
+                issueBook();
+                break;
+            case 6:
+                returnBook();
+                break;
+            case 7:
+                displayAllInformation();
+                break;
+            case 0:
+                printf("Exiting program.\n");
+                // Save data to files before exiting
+                saveDataBeforeExit();
+                break;
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+
+    } while (choice != 0);
+
+    return 0;
+}
